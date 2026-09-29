@@ -1177,7 +1177,7 @@ func runOfficialCLI(cfg *cliConfig) error {
 	session.testResults = nil
 	session.testMutex.Unlock()
 	if err := session.runTaskSync(func(ctx context.Context, session *appSession) {
-		runDetailedTest(ctx, session, dc, cfg.port, cfg.delay, scanMode)
+		runDetailedTest(ctx, session, dc, cfg.port, cfg.delay, scanMode, false)
 	}); err != nil {
 		return cliTaskError(err)
 	}

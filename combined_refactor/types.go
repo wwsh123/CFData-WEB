@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	requestURL       = "speed.cloudflare.com/cdn-cgi/trace"
-	scanModeTCPing   = "tcping"
-	scanModeHTTPing  = "httping"
+	requestURL      = "speed.cloudflare.com/cdn-cgi/trace"
+	scanModeTCPing  = "tcping"
+	scanModeHTTPing = "httping"
 )
 
 func latencyMultiplier(scanMode string, isTLS bool) float64 {
@@ -77,17 +77,19 @@ type ScanResult struct {
 }
 
 type TestResult struct {
-	IP         string
-	Port       int
-	DataCenter string
-	DCCountry  string
-	Region     string
-	City       string
-	MinLatency time.Duration
-	MaxLatency time.Duration
-	AvgLatency time.Duration
-	LossRate   float64
-	Speed      string
+	IP            string
+	Port          int
+	DataCenter    string
+	DCCountry     string
+	Region        string
+	City          string
+	MinLatency    time.Duration
+	MaxLatency    time.Duration
+	AvgLatency    time.Duration
+	LossRate      float64
+	Speed         string
+	Gemini        string
+	GoogleScholar string
 }
 
 type iptestResult struct {

@@ -1721,6 +1721,10 @@
                     <input id="officialDelay" type="number" value="500" placeholder="默认 500ms">
                 </div>
                 <div class="option-item">
+                    <span class="label" title="使用该 IP 的 443 端口和 Google 域名 SNI 检测服务可用性">🌍 Google 服务检测</span>
+                    <label><input id="officialServiceCheck" type="checkbox"> Gemini / 谷歌学术</label>
+                </div>
+                <div class="option-item">
                     <span class="label" title="测速达标下限，单位 MB/s">📉 测试合格速度</span>
                     <input id="officialSpeedMin" type="number" value="0.1" step="0.01" placeholder="默认 0.1MB/s" oninput="syncOfficialSpeedConfigState()">
                 </div>
@@ -2027,6 +2031,8 @@
                                 <th>最大延迟</th>
                                 <th>平均延迟</th>
                                 <th>测速</th>
+                                <th>Gemini</th>
+                                <th>谷歌学术</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
@@ -2711,6 +2717,7 @@
                     port: selVal('officialTestPort'),
                     threads: val('officialThreads'),
                     delay: val('officialDelay'),
+                    serviceCheck: !!document.getElementById('officialServiceCheck')?.checked,
                     speedMin: val('officialSpeedMin'),
                     speedLimit: val('officialSpeedLimit'),
                     autoSpeed: selVal('officialAutoSpeed'),
@@ -2751,6 +2758,7 @@
             setValue('officialTestPort', o.port);
             setValue('officialThreads', o.threads);
             setValue('officialDelay', o.delay);
+            if (o.serviceCheck !== undefined) document.getElementById('officialServiceCheck').checked = !!o.serviceCheck;
             setValue('officialSpeedMin', o.speedMin);
             setValue('officialSpeedLimit', o.speedLimit);
             setValue('officialAutoSpeed', o.autoSpeed);
@@ -3537,6 +3545,7 @@
             setValue('officialThreads', params.threads || params.maxThreads);
             setValue('officialTestPort', params.port);
             setValue('officialDelay', params.delay);
+            if (params.serviceCheck !== undefined) document.getElementById('officialServiceCheck').checked = !!params.serviceCheck;
             setValue('officialSpeedLimit', params.speedLimit);
             setValue('officialSpeedMin', params.speedMin);
             setValue('officialTargetDC', params.dc);
@@ -4262,7 +4271,7 @@
             resetProgress();
             progressBox.style.display = 'block';
             showDCSelection(dcList);
-            if (!wsSend({ type: 'start_test', data: { dc, port, delay, scanMode: getScanMode() } })) {
+            if (!wsSend({ type: 'start_test', data: { dc, port, delay, scanMode: getScanMode(), serviceCheck: !!document.getElementById('officialServiceCheck')?.checked } })) {
                 currentTestingDC = '';
                 isTaskRunning = false;
                 showDCSelection(dcList);
@@ -4283,7 +4292,8 @@
             const speedDisabled = isTesting || isTaskRunning || officialBatchSpeedRunning;
             const buttonText = isTesting ? '测速中' : (res.Speed ? '重新测速' : '测速');
             const lcFactor = getLatencyColorFactor();
-            const row = `<tr class="${speedStatus === 'qualified' ? 'row-qualified' : (speedStatus === 'unqualified' ? 'row-unqualified' : '')}"><td>${renderIPCell(res.IP, res.OriginalInput || res.originalInput)}</td><td><span class="copy-ip" onclick="copyToClipboard('${port}', event)">${port}</span></td><td>${meta.dc || '-'}</td><td>${meta.dcCountry || '-'}</td><td>${meta.region || '-'}</td><td>${meta.city || '-'}</td><td>${getScanModeLabel()}</td><td>${(res.LossRate * 100).toFixed(0)}%</td><td>${(res.MinLatency / 1_000_000).toFixed(0)} ms</td><td>${(res.MaxLatency / 1_000_000).toFixed(0)} ms</td><td style="color:${getLatencyColor(res.AvgLatency / 1_000_000, lcFactor)}; font-weight:600;">${(res.AvgLatency / 1_000_000).toFixed(0)} ms</td><td style="display:flex;justify-content:space-between;align-items:center;gap:8px;border-bottom:none;"><span class="speed-result" id="speed-val-${res.IP.replace(/[:.]/g, '_')}" style="color:${speedColor};"><span>${speedText}</span>${renderSpeedStatusTag(speedStatus)}</span><button class="action-btn speed-btn" id="btn-speed-${res.IP.replace(/[:.]/g, '_')}" onclick="runSpeedTest('${res.IP}')" ${speedDisabled ? 'disabled' : ''}>${buttonText}</button></td></tr>`;
+            const serviceCells = `<td>${escapeHTML(res.Gemini || '-')}</td><td>${escapeHTML(res.GoogleScholar || '-')}</td>`;
+            const row = `<tr class="${speedStatus === 'qualified' ? 'row-qualified' : (speedStatus === 'unqualified' ? 'row-unqualified' : '')}"><td>${renderIPCell(res.IP, res.OriginalInput || res.originalInput)}</td><td><span class="copy-ip" onclick="copyToClipboard('${port}', event)">${port}</span></td><td>${meta.dc || '-'}</td><td>${meta.dcCountry || '-'}</td><td>${meta.region || '-'}</td><td>${meta.city || '-'}</td><td>${getScanModeLabel()}</td><td>${(res.LossRate * 100).toFixed(0)}%</td><td>${(res.MinLatency / 1_000_000).toFixed(0)} ms</td><td>${(res.MaxLatency / 1_000_000).toFixed(0)} ms</td><td style="color:${getLatencyColor(res.AvgLatency / 1_000_000, lcFactor)}; font-weight:600;">${(res.AvgLatency / 1_000_000).toFixed(0)} ms</td><td style="display:flex;justify-content:space-between;align-items:center;gap:8px;border-bottom:none;"><span class="speed-result" id="speed-val-${res.IP.replace(/[:.]/g, '_')}" style="color:${speedColor};"><span>${speedText}</span>${renderSpeedStatusTag(speedStatus)}</span><button class="action-btn speed-btn" id="btn-speed-${res.IP.replace(/[:.]/g, '_')}" onclick="runSpeedTest('${res.IP}')" ${speedDisabled ? 'disabled' : ''}>${buttonText}</button></td>${serviceCells}</tr>`;
             document.querySelector('#testTable tbody').insertAdjacentHTML('beforeend', row);
         }
 
@@ -4666,6 +4676,7 @@
                 officialSpeedURL: officialSpeedConfig.url,
                 officialSpeedMin: officialSpeedConfig.speedMin,
                 officialSpeedLimit: officialSpeedConfig.speedLimit,
+                serviceCheck: !!document.getElementById('officialServiceCheck')?.checked,
             } })) {
                 officialAutoSpeedPending = false;
                 officialAutoStage = '';
@@ -4807,6 +4818,8 @@
             { key: 'lossRate', label: '丢包率' },
             { key: 'latency', label: '网络延迟' },
             { key: 'speed', label: '下载速度' },
+            { key: 'gemini', label: 'Gemini' },
+            { key: 'googleScholar', label: '谷歌学术' },
             { key: 'outboundIP', label: '出站IP' },
             { key: 'ipType', label: 'IP类型' },
             { key: 'originalInput', label: '原始输入' },
@@ -5645,6 +5658,8 @@
                 city: scan.City || r.City || '',
                 latency: `${(r.AvgLatency / 1_000_000).toFixed(0)}ms`,
                 speed: r.Speed || '未测速',
+                gemini: r.Gemini || '',
+                googleScholar: r.GoogleScholar || '',
             };
         }
 

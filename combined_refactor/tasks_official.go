@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net"
@@ -267,6 +268,55 @@ func testIPLatency(ctx context.Context, ip string, port int, delay int, scanMode
 	}, "", ""
 }
 
+func probeGoogleService(ctx context.Context, ip, host string) string {
+	probeCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	transport := &http.Transport{
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			return (&net.Dialer{Timeout: timeout}).DialContext(ctx, "tcp", net.JoinHostPort(ip, "443"))
+		},
+		TLSClientConfig: &tls.Config{
+			ServerName: host,
+			RootCAs:    rootCAPool(),
+			MinVersion: tls.VersionTLS12,
+			NextProtos: []string{"h2", "http/1.1"},
+		},
+		ForceAttemptHTTP2: true,
+	}
+	client := http.Client{Transport: transport, Timeout: 5 * time.Second, CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}}
+	req, err := http.NewRequestWithContext(probeCtx, http.MethodGet, "https://"+host+"/", nil)
+	if err != nil {
+		return "失败: " + err.Error()
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0")
+	resp, err := client.Do(req)
+	if err != nil {
+		return "失败: " + err.Error()
+	}
+	resp.Body.Close()
+	if resp.StatusCode >= 200 && resp.StatusCode < 400 {
+		return fmt.Sprintf("可用 (%d)", resp.StatusCode)
+	}
+	return fmt.Sprintf("不可用 (%d)", resp.StatusCode)
+}
+
+func testGoogleServices(ctx context.Context, ip string) (string, string) {
+	var wg sync.WaitGroup
+	results := make([]string, 2)
+	hosts := []string{"gemini.google.com", "scholar.google.com"}
+	for i, host := range hosts {
+		wg.Add(1)
+		go func(i int, host string) {
+			defer wg.Done()
+			results[i] = probeGoogleService(ctx, ip, host)
+		}(i, host)
+	}
+	wg.Wait()
+	return results[0], results[1]
+}
+
 func measureHTTPTTFB(ctx context.Context, ip string, port int, effectiveDelay int) (time.Duration, string) {
 	dialer := &net.Dialer{Timeout: timeout}
 	conn, err := dialer.DialContext(ctx, "tcp", net.JoinHostPort(ip, strconv.Itoa(port)))
@@ -450,7 +500,7 @@ func runOfficialTask(ctx context.Context, session *appSession, ipType int, scanM
 	session.sendWSMessage("scan_complete_wait_dc", dcList)
 }
 
-func runDetailedTest(ctx context.Context, session *appSession, selectedDC string, port int, delay int, scanMode string) {
+func runDetailedTest(ctx context.Context, session *appSession, selectedDC string, port int, delay int, scanMode string, serviceCheck bool) {
 	var testIPList []string
 	scanByIP := make(map[string]ScanResult)
 	session.scanMutex.Lock()
@@ -523,6 +573,9 @@ func runDetailedTest(ctx context.Context, session *appSession, selectedDC string
 			res.DCCountry = scan.DCCountry
 			res.Region = scan.Region
 			res.City = scan.City
+		}
+		if serviceCheck {
+			res.Gemini, res.GoogleScholar = testGoogleServices(ctx, ip)
 		}
 		session.sendWSMessage("test_result", *res)
 

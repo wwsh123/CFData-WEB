@@ -8,24 +8,26 @@ type wsRequest struct {
 }
 
 type startTaskRequest struct {
-	IPType            int     `json:"ipType"`
-	Threads           int     `json:"threads"`
-	Port              int     `json:"port"`
-	Delay             int     `json:"delay"`
-	ScanMode          string  `json:"scanMode"`
-	AutoSpeed         bool    `json:"autoSpeed"`
-	OfficialTargetDC  string  `json:"officialTargetDC"`
-	OfficialSpeedPort int     `json:"officialSpeedPort"`
-	OfficialSpeedURL  string  `json:"officialSpeedURL"`
-	OfficialSpeedMin  float64 `json:"officialSpeedMin"`
-	OfficialSpeedLimit int    `json:"officialSpeedLimit"`
+	IPType             int     `json:"ipType"`
+	Threads            int     `json:"threads"`
+	Port               int     `json:"port"`
+	Delay              int     `json:"delay"`
+	ScanMode           string  `json:"scanMode"`
+	AutoSpeed          bool    `json:"autoSpeed"`
+	OfficialTargetDC   string  `json:"officialTargetDC"`
+	OfficialSpeedPort  int     `json:"officialSpeedPort"`
+	OfficialSpeedURL   string  `json:"officialSpeedURL"`
+	OfficialSpeedMin   float64 `json:"officialSpeedMin"`
+	OfficialSpeedLimit int     `json:"officialSpeedLimit"`
+	ServiceCheck       bool    `json:"serviceCheck"`
 }
 
 type startTestRequest struct {
-	DC       string `json:"dc"`
-	Port     int    `json:"port"`
-	Delay    int    `json:"delay"`
-	ScanMode string `json:"scanMode"`
+	DC           string `json:"dc"`
+	Port         int    `json:"port"`
+	Delay        int    `json:"delay"`
+	ScanMode     string `json:"scanMode"`
+	ServiceCheck bool   `json:"serviceCheck"`
 }
 
 type startSpeedTestRequest struct {
